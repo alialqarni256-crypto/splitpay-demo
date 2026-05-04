@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>SplitPay — تسوية دفع جماعي</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+  html, body, #root { width: 100%; min-height: 100vh; background: #060B14; overflow-x: hidden; }
+  body { font-family: 'Tajawal', sans-serif; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  input:focus { outline: none; }
+  ::-webkit-scrollbar { width: 0; }
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type="number"] { -moz-appearance: textfield; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const C={bg:"#060B14",card:"#0E1A2B",primary:"#4DD8E0",primaryDim:"#4DD8E015",accent:"#2B7FFF",text:"#FFFFFF",sub:"#8DA0B8",muted:"#3A4D65",border:"#1A2D45",danger:"#FF6B6B",dangerDim:"#FF6B6B15",warn:"#FECA57",warnDim:"#FECA5715",g1:"#4DD8E0",g2:"#2B7FFF"};
+const font="'Tajawal', sans-serif";
+const fullS={minHeight:"100vh",background:C.bg};
+const hd={color:C.text,fontFamily:font,fontWeight:700};
+const btnP={padding:"14px 24px",borderRadius:14,border:"none",background:`linear-gradient(135deg,${C.g1},${C.g2})`,color:"#fff",fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:font};
+const btnSec={...btnP,background:C.card,border:`1px solid ${C.border}`,color:C.text};
+const inp={width:"100%",padding:"14px 16px",borderRadius:14,border:`1.5px solid ${C.border}`,background:C.card,color:C.text,fontSize:16,fontFamily:font,direction:"rtl"};
+const bk={background:"none",border:"none",color:C.primary,fontSize:14,cursor:"pointer",padding:"8px 0",fontFamily:font};
+const pill=(c)=>({padding:"4px 10px",borderRadius:20,background:`${c}20`,color:c,fontSize:11,fontWeight:700,fontFamily:font});
+const spinAnim=(s=28)=>({width:s,height:s,border:`3px solid ${C.border}`,borderTopColor:C.primary,borderRadius:"50%",animation:"spin 0.8s linear infinite"});
+
+/* Brand Logo */
+function SplitLogo({size=42}){
+  return<div style={{display:"flex",alignItems:"baseline",justifyContent:"center",gap:2,direction:"ltr"}}>
+    <span style={{fontSize:size,fontWeight:900,color:"#fff",letterSpacing:-1,fontFamily:"'Tajawal',sans-serif",lineHeight:1}}>SPLIT</span>
+    <span style={{fontSize:size*0.75,fontWeight:800,color:C.primary,letterSpacing:1,fontFamily:"'Tajawal',sans-serif",lineHeight:1}}>PAY</span>
+  </div>
+}
+
+/* Background rings decoration */
+function BgRings(){
+  return<div style={{position:"absolute",top:0,left:0,right:0,bottom:0,overflow:"hidden",pointerEvents:"none"}}>
+    <div style={{position:"absolute",top:"-20%",right:"-30%",width:400,height:400,borderRadius:"50%",border:`1.5px solid ${C.primary}12`,boxShadow:`0 0 80px ${C.primary}08`}}/>
+    <div style={{position:"absolute",top:"-10%",right:"-20%",width:300,height:300,borderRadius:"50%",border:`1.5px solid ${C.accent}15`,boxShadow:`0 0 60px ${C.accent}08`}}/>
+    <div style={{position:"absolute",bottom:"-15%",left:"-25%",width:350,height:350,borderRadius:"50%",border:`1.5px solid ${C.primary}10`}}/>
+  </div>
+}
+function Dots({c,t}){return<div style={{display:"flex",gap:8,justifyContent:"center",marginBottom:20}}>{Array.from({length:t},(_,i)=><div key={i} style={{width:i===c?24:8,height:8,borderRadius:4,background:i===c?C.primary:C.border,transition:"all 0.3s"}}/>)}</div>}
+function TopBar({onBack,onHome,nav}){return<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+  {onBack?<button onClick={onBack} style={bk}>→ رجوع</button>:<div/>}
+  {(onHome||nav)&&<button onClick={onHome||(()=>nav("home"))} style={{...bk,fontSize:18}}>🏠</button>}
+</div>}
+
+/* ============ 1. SPLASH ============ */
+function Splash({go}){
+  const[s,setS]=useState(false);
+  useEffect(()=>{setTimeout(()=>setS(true),100)},[]);
+  return<div style={{...fullS,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:`radial-gradient(ellipse at 50% 30%,${C.card} 0%,${C.bg} 70%)`,position:"relative"}}>
+    <BgRings/>
+    <div style={{opacity:s?1:0,transform:s?"scale(1)":"scale(0.8)",transition:"all 0.8s cubic-bezier(0.34,1.56,0.64,1)",textAlign:"center",position:"relative",zIndex:1}}>
+      <SplitLogo size={48}/>
+      <p style={{color:C.sub,fontSize:16,marginTop:12,fontFamily:font}}>تسوية دفع جماعي مباشرة</p>
+    </div>
+    <div style={{position:"absolute",bottom:40,width:"calc(100% - 48px)",opacity:s?1:0,transition:"opacity 0.6s ease 0.5s",display:"flex",flexDirection:"column",alignItems:"center",gap:12,zIndex:1}}>
+      <button onClick={go} style={{...btnP,width:"100%"}}>ابدأ الآن</button>
+      <p style={{color:C.sub,fontSize:13,margin:0,fontFamily:font}}>لديك حساب؟ <span style={{color:C.primary,cursor:"pointer",fontWeight:700}}>سجل الدخول</span></p>
+      <p style={{color:C.muted,fontSize:10,margin:"4px 0 0",textAlign:"center",fontFamily:font}}>نسخة تجريبية — لا يتم تحويل أموال حقيقية</p>
+    </div>
+  </div>
+}
+
+/* ============ 2. PHONE + OTP ============ */
+function PhoneOtp({go}){
+  const[st,setSt]=useState(0);
+  const[phone,setPhone]=useState("");
+  const[otp,setOtp]=useState(["","","","",""]);
+  const[tmr,setTmr]=useState(60);
+  useEffect(()=>{
+    if(st===1){const i=setInterval(()=>setTmr(p=>p>0?p-1:0),1000);return()=>clearInterval(i)}
+    if(st===2){const t=setTimeout(go,1500);return()=>clearTimeout(t)}
+  },[st]);
+  const handleOtp=(val,idx)=>{
+    const n=[...otp];n[idx]=val.slice(-1);setOtp(n);
+    if(val&&idx<4){const next=document.getElementById(`otp-${idx+1}`);if(next)next.focus()}
+    if(n.every(d=>d!=="")){setTimeout(()=>setSt(2),800)}
+  };
+  return<div style={{...fullS,padding:24,direction:"rtl"}}>
+    <TopBar onBack={null}/>
+    <Dots c={0} t={4}/>
+    <div style={{textAlign:"center",marginBottom:32}}>
+      <div style={{width:72,height:72,borderRadius:20,margin:"0 auto 16px",background:`linear-gradient(135deg,${C.g1},${C.g2})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:36}}>📱</div>
+      <h2 style={{...hd,fontSize:22}}>تسجيل رقم الجوال</h2>
+      <p style={{color:C.sub,fontSize:14,margin:0}}>أدخل رقم جوالك لإرسال رمز التحقق</p>
+    </div>
+    {st===0&&<div>
+      <label style={{color:C.sub,fontSize:13,marginBottom:8,display:"block"}}>رقم الجوال</label>
+      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
+        <div style={{padding:"14px 12px",borderRadius:14,background:C.card,border:`1.5px solid ${C.border}`,color:C.sub,fontSize:15,fontFamily:"monospace",minWidth:60,textAlign:"center"}}>+966</div>
+        <input value={phone} onChange={e=>setPhone(e.target.value.replace(/\D/g,""))} placeholder="5xxxxxxxx" maxLength={9} style={{...inp,flex:1,textAlign:"center",fontSize:20,letterSpacing:2,fontFamily:"monospace",direction:"ltr"}}/>
+      </div>
+      <p style={{color:C.muted,fontSize:11,margin:"0 0 16px"}}>مثال: 512345678 — يبدأ بـ 5</p>
+      <button onClick={()=>{if(phone.length>=9)setSt(1)}} disabled={phone.length<9} style={{...btnP,width:"100%",opacity:phone.length>=9?1:0.4}}>إرسال رمز التحقق</button>
+    </div>}
+    {st===1&&<div>
+      <p style={{color:C.sub,fontSize:14,textAlign:"center",marginBottom:20}}>أدخل الرمز المرسل إلى <span style={{color:C.primary,direction:"ltr",display:"inline-block"}}>+966{phone}</span></p>
+      <div style={{display:"flex",gap:10,justifyContent:"center",marginBottom:24,direction:"ltr"}}>
+        {otp.map((d,i)=><input key={i} id={`otp-${i}`} value={d} onChange={e=>handleOtp(e.target.value,i)} maxLength={1} style={{width:52,height:60,borderRadius:14,border:`1.5px solid ${d?C.primary:C.border}`,background:C.card,color:C.text,fontSize:28,textAlign:"center",fontFamily:"monospace",fontWeight:700}}/>)}
+      </div>
+      <div style={{display:"flex",justifyContent:"center",gap:4}}>
+        <span style={{color:C.muted,fontSize:12}}>لم يصلك الرمز؟</span>
+        {tmr>0?<span style={{color:C.sub,fontSize:12}}>إعادة الإرسال ({tmr})</span>
+        :<span style={{color:C.primary,fontSize:12,cursor:"pointer",fontWeight:700}} onClick={()=>setTmr(60)}>إعادة الإرسال</span>}
+      </div>
+    </div>}
+    {st===2&&<div style={{textAlign:"center",marginTop:40}}>
+      <div style={{width:80,height:80,borderRadius:"50%",margin:"0 auto 20px",background:C.primaryDim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:40}}>✅</div>
+      <h3 style={{color:C.primary,fontSize:20,margin:0}}>تم التحقق من الرقم</h3>
+    </div>}
+  </div>
+}
+
+/* ============ 3. NAFATH ============ */
+function Nafath({go}){
+  const[st,setSt]=useState(0);
+  const[id,setId]=useState("");
+  const[tmr,setTmr]=useState(60);
+  useEffect(()=>{
+    if(st===1){const t=setTimeout(()=>setSt(2),2000);return()=>clearTimeout(t)}
+    if(st===2){const i=setInterval(()=>setTmr(p=>p>0?p-1:0),1000);return()=>clearInterval(i)}
+    if(st===3){const t=setTimeout(go,1500);return()=>clearTimeout(t)}
+  },[st]);
+  return<div style={{...fullS,padding:24,direction:"rtl"}}>
+    <TopBar onBack={null}/>
+    <Dots c={1} t={4}/>
+    <div style={{textAlign:"center",marginBottom:32}}>
+      <div style={{width:72,height:72,borderRadius:20,margin:"0 auto 16px",background:"linear-gradient(135deg,#2D8B4E,#1B5E37)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:36}}>🪪</div>
+      <h2 style={{...hd,fontSize:22}}>أكمل بالنفاذ الوطني</h2>
+      <p style={{color:C.sub,fontSize:14,margin:0}}>تحقق آمن من هويتك</p>
+    </div>
+    {st===0&&<div>
+      <label style={{color:C.sub,fontSize:13,marginBottom:8,display:"block"}}>رقم الهوية / الإقامة</label>
+      <input value={id} onChange={e=>setId(e.target.value)} placeholder="1xxxxxxxxx" maxLength={10} style={{...inp,textAlign:"center",fontSize:22,letterSpacing:4,fontFamily:"monospace"}}/>
+      <p style={{color:C.muted,fontSize:11,margin:"6px 0 16px"}}>10 أرقام — يبدأ بـ 1 أو 2</p>
+      <button onClick={()=>{if(id.length>=10)setSt(1)}} disabled={id.length<10} style={{...btnP,marginTop:20,width:"100%",opacity:id.length>=10?1:0.4}}>إرسال طلب التحقق</button>
+    </div>}
+    {st===1&&<div style={{textAlign:"center",marginTop:40}}>
+      <div style={{...spinAnim(),margin:"0 auto 24px"}}/>
+      <p style={{color:C.text,fontSize:16}}>جاري إرسال الطلب...</p>
+      <p style={{color:C.sub,fontSize:13}}>افتح تطبيق نفاذ على جوالك</p>
+    </div>}
+    {st===2&&<div style={{textAlign:"center"}}>
+      <p style={{color:C.sub,fontSize:14,marginBottom:16}}>اختر الرقم التالي في تطبيق نفاذ</p>
+      <div style={{width:120,height:120,borderRadius:24,margin:"0 auto 24px",background:`linear-gradient(135deg,${C.g1},${C.g2})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:48,fontWeight:800,color:"#fff",boxShadow:`0 8px 32px ${C.primary}40`}}>47</div>
+      <div style={{width:200,height:4,borderRadius:2,margin:"0 auto 8px",background:C.border,overflow:"hidden"}}>
+        <div style={{width:`${(tmr/60)*100}%`,height:"100%",borderRadius:2,background:tmr>20?C.primary:C.danger,transition:"width 1s linear"}}/>
+      </div>
+      <p style={{color:C.muted,fontSize:12}}>ينتهي خلال {tmr} ثانية</p>
+      <button onClick={()=>setSt(3)} style={{...btnSec,marginTop:24,width:"100%",borderColor:C.primary,color:C.primary}}>✓ تم التأكيد (محاكاة)</button>
+    </div>}
+    {st===3&&<div style={{textAlign:"center",marginTop:40}}>
+      <div style={{width:80,height:80,borderRadius:"50%",margin:"0 auto 20px",background:C.primaryDim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:40}}>✅</div>
+      <h3 style={{color:C.primary,fontSize:20,margin:0}}>تم التحقق بنجاح</h3>
+      <p style={{color:C.sub,fontSize:14}}>أهلاً، علي القرني</p>
+    </div>}
+  </div>
+}
+
+/* ============ 4. TERMS ============ */
+function Terms({go}){
+  const[checks,setChecks]=useState([false,false,false]);
+  const toggle=(i)=>{const n=[...checks];n[i]=!n[i];setChecks(n)};
+  const allChecked=checks.every(Boolean);
+  const items=[
+    {label:"أوافق على ",link:"شروط الخدمة",rest:" واتفاقية المستخدم"},
+    {label:"أوافق على ",link:"سياسة الخصوصية",rest:" (متوافقة مع نظام PDPL)"},
+    {label:"أفوّض SplitPay بمعالجة الدفعات المقسّمة عبر حسابي البنكي",link:"",rest:""},
+  ];
+  return<div style={{...fullS,padding:24,direction:"rtl",display:"flex",flexDirection:"column"}}>
+    <TopBar onBack={null}/>
+    <Dots c={2} t={4}/>
+    <div style={{textAlign:"center",marginBottom:32}}>
+      <div style={{width:72,height:72,borderRadius:20,margin:"0 auto 16px",background:C.primaryDim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:36}}>📋</div>
+      <h2 style={{...hd,fontSize:22}}>الشروط والأحكام</h2>
+      <p style={{color:C.sub,fontSize:14,margin:0}}>راجع الشروط ووافق عليها للمتابعة</p>
+    </div>
+    <div style={{display:"flex",flexDirection:"column",gap:14,flex:1}}>
+      {items.map((item,i)=><button key={i} onClick={()=>toggle(i)} style={{display:"flex",alignItems:"flex-start",gap:12,padding:16,borderRadius:14,background:checks[i]?C.primaryDim:C.card,border:`1.5px solid ${checks[i]?C.primary:C.border}`,cursor:"pointer",textAlign:"right"}}>
+        <div style={{width:24,height:24,borderRadius:8,border:`2px solid ${checks[i]?C.primary:C.muted}`,background:checks[i]?C.primary:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:2}}>
+          {checks[i]&&<span style={{color:"#fff",fontSize:14,fontWeight:700}}>✓</span>}
+        </div>
+        <span style={{color:C.text,fontSize:14,fontFamily:font,lineHeight:1.6}}>
+          {item.label}{item.link&&<span style={{color:C.primary,textDecoration:"underline"}}>{item.link}</span>}{item.rest}
+        </span>
+      </button>)}
+    </div>
+    <div style={{marginTop:24,padding:12,borderRadius:10,background:C.card,border:`1px solid ${C.border}`}}>
+      <p style={{color:C.muted,fontSize:10,margin:0,textAlign:"center",lineHeight:1.6}}>SplitPay تحتفظ بالأموال لدى مزود خدمات دفع مرخّص</p>
+    </div>
+    <button onClick={go} disabled={!allChecked} style={{...btnP,width:"100%",marginTop:16,opacity:allChecked?1:0.4}}>متابعة</button>
+  </div>
+}
+
+/* ============ 5. CARD LINK ============ */
+function CardLink({go}){
+  const[cardNum,setCardNum]=useState("");
+  const[expiry,setExpiry]=useState("");
+  const[cvv,setCvv]=useState("");
+  const[name,setName]=useState("");
+  const[ld,setLd]=useState(false);
+  const[dn,setDn]=useState(false);
+  const valid=cardNum.replace(/\s/g,"").length>=16&&expiry.length>=4&&cvv.length>=3;
+  const formatCard=(v)=>{const d=v.replace(/\D/g,"").slice(0,16);return d.replace(/(.{4})/g,"$1 ").trim()};
+  const formatExpiry=(v)=>{const d=v.replace(/\D/g,"").slice(0,4);if(d.length>2)return d.slice(0,2)+"/"+d.slice(2);return d};
+  const link=()=>{setLd(true);setTimeout(()=>{setLd(false);setDn(true)},2000);setTimeout(go,3500)};
+  return<div style={{...fullS,padding:24,direction:"rtl"}}>
+    <TopBar onBack={null}/>
+    <Dots c={3} t={4}/>
+    <h2 style={{...hd,fontSize:22,textAlign:"center"}}>اربط بطاقتك البنكية</h2>
+    <p style={{color:C.sub,fontSize:14,textAlign:"center",marginTop:0}}>حصتك تُخصم مباشرة من بطاقتك</p>
+    {!dn?<div style={{marginTop:24}}>
+      {/* Card Preview */}
+      <div style={{width:"100%",maxWidth:340,height:180,margin:"0 auto 24px",borderRadius:20,padding:20,background:"linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)",boxShadow:`0 12px 40px ${C.primary}15`,display:"flex",flexDirection:"column",justifyContent:"space-between",position:"relative"}}>
+        <div style={{display:"flex",justifyContent:"space-between"}}>
+          <span style={{fontSize:10,color:C.primary,fontWeight:900,letterSpacing:1}}><span style={{color:"#fff"}}>SPLIT</span>PAY</span>
+          <div style={{width:30,height:20,borderRadius:4,background:"linear-gradient(90deg,#EB001B,#F79E1B)",opacity:0.8}}/>
+        </div>
+        <div style={{fontSize:18,color:cardNum?C.text:C.muted,letterSpacing:3,fontFamily:"monospace",textAlign:"center",direction:"ltr"}}>{cardNum||"•••• •••• •••• ••••"}</div>
+        <div style={{display:"flex",justifyContent:"space-between"}}>
+          <span style={{color:name?C.text:C.muted,fontSize:12,fontFamily:font}}>{name||"الاسم"}</span>
+          <span style={{color:expiry?C.text:C.muted,fontSize:12,fontFamily:"monospace"}}>{expiry||"MM/YY"}</span>
+        </div>
+        <div style={{position:"absolute",top:60,right:20,width:36,height:28,borderRadius:6,background:"linear-gradient(135deg,#C9A84C,#E8D48B)"}}/>
+      </div>
+      <label style={{color:C.sub,fontSize:12,marginBottom:6,display:"block"}}>رقم البطاقة</label>
+      <input value={cardNum} onChange={e=>setCardNum(formatCard(e.target.value))} placeholder="0000 0000 0000 0000" style={{...inp,fontSize:16,letterSpacing:2,fontFamily:"monospace",textAlign:"left",direction:"ltr",marginBottom:4}}/>
+      <p style={{color:C.muted,fontSize:10,margin:"0 0 10px"}}>16 رقم — مدى أو فيزا أو ماستركارد</p>
+      <div style={{display:"flex",gap:10,marginBottom:14}}>
+        <div style={{flex:1}}>
+          <label style={{color:C.sub,fontSize:12,marginBottom:6,display:"block"}}>تاريخ الانتهاء</label>
+          <input value={expiry} onChange={e=>setExpiry(formatExpiry(e.target.value))} placeholder="MM/YY" style={{...inp,fontSize:16,fontFamily:"monospace",textAlign:"center",direction:"ltr"}}/>
+        </div>
+        <div style={{flex:1}}>
+          <label style={{color:C.sub,fontSize:12,marginBottom:6,display:"block"}}>CVV</label>
+          <input value={cvv} onChange={e=>setCvv(e.target.value.replace(/\D/g,"").slice(0,4))} placeholder="•••" type="password" style={{...inp,fontSize:16,fontFamily:"monospace",textAlign:"center",direction:"ltr"}}/>
+        </div>
+      </div>
+      <label style={{color:C.sub,fontSize:12,marginBottom:6,display:"block"}}>الاسم على البطاقة</label>
+      <input value={name} onChange={e=>setName(e.target.value)} placeholder="Ali Abdullah" style={{...inp,fontSize:14,direction:"ltr",textAlign:"left",marginBottom:4}}/>
+      <p style={{color:C.muted,fontSize:10,margin:"0 0 16px"}}>كما هو مطبوع على البطاقة بالإنجليزي</p>
+      <button onClick={link} disabled={!valid||ld} style={{...btnP,width:"100%",opacity:valid?1:0.4}}>{ld?"جاري الربط...":"ربط البطاقة"}</button>
+    </div>
+    :<div style={{textAlign:"center",marginTop:60}}>
+      <div style={{width:80,height:80,borderRadius:"50%",margin:"0 auto 20px",background:C.primaryDim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:40}}>✅</div>
+      <h3 style={{color:C.primary,fontSize:20}}>تم ربط البطاقة</h3>
+      <p style={{color:C.sub,fontSize:14}}>•••• •••• •••• {cardNum.replace(/\s/g,"").slice(-4)||"7891"}</p>
+    </div>}
+  </div>
+}
+
+/* ============ 6. HOME ============ */
+function Home({nav}){
+  const groups=[{name:"شقة الرياض",emoji:"🏠",members:3,last:1250,c:"#6C5CE7"},{name:"رحلة أبها",emoji:"✈️",members:4,last:3400,c:"#00D4AA"},{name:"غداء الشغل",emoji:"🍔",members:5,last:180,c:"#FECA57"}];
+  const txs=[{merchant:"مطعم بيتزا",icon:"🍕",amount:340,time:"منذ 5 دقائق",mine:113},{merchant:"جرير",icon:"📚",amount:520,time:"منذ ساعة",mine:173},{merchant:"كارفور",icon:"🛒",amount:287,time:"أمس",mine:96}];
+  return<div style={{...fullS,padding:"20px 20px 100px",direction:"rtl",overflowY:"auto"}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+      <div><p style={{color:C.sub,fontSize:13,margin:0}}>أهلاً</p><h2 style={{...hd,fontSize:24,margin:0}}>علي 👋</h2></div>
+    </div>
+    <div style={{display:"flex",gap:10,marginBottom:20}}>
+      <button onClick={()=>nav("create")} style={{flex:1,padding:"16px 12px",borderRadius:16,cursor:"pointer",background:`linear-gradient(135deg,${C.g1}15,${C.g2}15)`,border:`1.5px solid ${C.primary}40`,display:"flex",flexDirection:"column",alignItems:"center",gap:8}}>
+        <div style={{width:48,height:48,borderRadius:14,background:`linear-gradient(135deg,${C.g1},${C.g2})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}}>➕</div>
+        <span style={{color:C.text,fontSize:13,fontWeight:700,fontFamily:font}}>مجموعة جديدة</span>
+      </button>
+      <button onClick={()=>nav("quick")} style={{flex:1,padding:"16px 12px",borderRadius:16,cursor:"pointer",background:`${C.warn}08`,border:`1.5px solid ${C.warn}40`,display:"flex",flexDirection:"column",alignItems:"center",gap:8}}>
+        <div style={{width:48,height:48,borderRadius:14,background:C.warn,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          {/* QR/Barcode icon */}
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <rect x="3" y="3" width="7" height="7" rx="1" stroke="#000" strokeWidth="2"/>
+            <rect x="14" y="3" width="7" height="7" rx="1" stroke="#000" strokeWidth="2"/>
+            <rect x="3" y="14" width="7" height="7" rx="1" stroke="#000" strokeWidth="2"/>
+            <rect x="5" y="5" width="3" height="3" fill="#000"/>
+            <rect x="16" y="5" width="3" height="3" fill="#000"/>
+            <rect x="5" y="16" width="3" height="3" fill="#000"/>
+            <rect x="14" y="14" width="2" height="2" fill="#000"/>
+            <rect x="18" y="14" width="3" height="2" fill="#000"/>
+            <rect x="14" y="18" width="2" height="3" fill="#000"/>
+            <rect x="18" y="18" width="3" height="3" fill="#000"/>
+          </svg>
+        </div>
+        <span style={{color:C.text,fontSize:13,fontWeight:700,fontFamily:font}}>تقسيم سريع</span>
+      </button>
+    </div>
+    <div style={{padding:20,borderRadius:20,background:`linear-gradient(135deg,${C.g1}10,${C.g2}10)`,border:`1px solid ${C.border}`,marginBottom:20}}>
+      <p style={{color:C.sub,fontSize:13,margin:"0 0 4px"}}>إجمالي هذا الشهر</p>
+      <div style={{fontSize:32,fontWeight:800,color:C.text,fontFamily:font}}>٤٬٨٣٠ ر.س</div>
+      <div style={{display:"flex",gap:16,marginTop:12}}>
+        <div><p style={{color:C.muted,fontSize:11,margin:0}}>حصتي</p><p style={{color:C.primary,fontSize:16,fontWeight:700,margin:0}}>١٬٦١٠ ر.س</p></div>
+        <div style={{width:1,background:C.border}}/>
+        <div><p style={{color:C.muted,fontSize:11,margin:0}}>وفّرت</p><p style={{color:C.warn,fontSize:16,fontWeight:700,margin:0}}>٣٬٢٢٠ ر.س</p></div>
+      </div>
+    </div>
+    <h3 style={{color:C.text,fontSize:17,margin:"0 0 12px",fontFamily:font}}>مجموعاتي</h3>
+    {groups.map((g,i)=><button key={i} onClick={()=>nav("card")} style={{width:"100%",display:"flex",alignItems:"center",gap:14,padding:16,marginBottom:10,borderRadius:16,background:C.card,border:`1px solid ${C.border}`,cursor:"pointer"}}>
+      <div style={{width:48,height:48,borderRadius:14,background:`${g.c}20`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}}>{g.emoji}</div>
+      <div style={{flex:1,textAlign:"right"}}><p style={{color:C.text,fontSize:15,margin:0,fontWeight:600,fontFamily:font}}>{g.name}</p><p style={{color:C.muted,fontSize:12,margin:"4px 0 0"}}>{g.members} أعضاء</p></div>
+      <div style={{textAlign:"left"}}><p style={{color:C.text,fontSize:14,fontWeight:600,margin:0}}>{g.last} ر.س</p><p style={{color:C.muted,fontSize:11,margin:0}}>آخر عملية</p></div>
+    </button>)}
+    <h3 style={{color:C.text,fontSize:17,margin:"20px 0 12px",fontFamily:font}}>آخر العمليات</h3>
+    {txs.map((tx,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 0",borderBottom:`1px solid ${C.border}`}}>
+      <span style={{fontSize:28}}>{tx.icon}</span>
+      <div style={{flex:1}}><p style={{color:C.text,fontSize:14,margin:0,fontFamily:font}}>{tx.merchant}</p><p style={{color:C.muted,fontSize:12,margin:0}}>{tx.time}</p></div>
+      <div style={{textAlign:"left"}}><p style={{color:C.text,fontSize:14,fontWeight:600,margin:0}}>{tx.amount} ر.س</p><p style={{color:C.primary,fontSize:11,margin:0}}>حصتك: {tx.mine} ر.س</p></div>
+    </div>)}
+    <div style={{position:"fixed",bottom:0,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,display:"flex",justifyContent:"space-around",padding:"10px 0 18px",maxWidth:430,margin:"0 auto"}}>
+      {[{i:"🏠",l:"الرئيسية",a:true},{i:"💳",l:"البطاقات",onClick:()=>nav("card")},{i:"📱",l:"تقسيم سريع",onClick:()=>nav("quick")},{i:"👤",l:"حسابي"}].map((n,idx)=><button key={idx} onClick={n.onClick} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+        <span style={{fontSize:20}}>{n.i}</span>
+        <span style={{fontSize:10,color:n.a?C.primary:C.muted,fontFamily:font}}>{n.l}</span>
+      </button>)}
+    </div>
+  </div>
+}
+
+/* ============ 7. QUICK SPLIT ============ */
+function QuickSplit({nav}){
+  const[st,setSt]=useState(0);
+  const[amount,setAmount]=useState("");
+  const[mode,setMode]=useState("quick"); // quick or scheduled
+  const[endDate,setEndDate]=useState("");
+  const code="8247";
+  const[joined,setJoined]=useState([{name:"علي",avatar:"👨🏻‍💼",status:"host"}]);
+  const[copied,setCopied]=useState(false);
+  useEffect(()=>{
+    if(st===1){
+      const t1=setTimeout(()=>setJoined(p=>[...p,{name:"سارة",avatar:"👩🏻‍💻",status:"app"}]),2000);
+      const t2=setTimeout(()=>setJoined(p=>[...p,{name:"محمد",avatar:"👨🏻",status:"web"}]),3500);
+      const t3=setTimeout(()=>setSt(2),4500);
+      return()=>{clearTimeout(t1);clearTimeout(t2);clearTimeout(t3)}
+    }
+    if(st===3)setTimeout(()=>setSt(4),2500);
+  },[st]);
+  const total=parseInt(amount)||0;
+  const pp=joined.length>0?Math.ceil(total/joined.length):0;
+  return<div style={{...fullS,padding:24,direction:"rtl"}}>
+    <TopBar onBack={()=>nav("home")} nav={nav}/>
+    {st===0&&<div>
+      <div style={{textAlign:"center",marginBottom:24}}>
+        <div style={{width:64,height:64,borderRadius:16,margin:"0 auto 12px",background:C.warn,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+            <rect x="3" y="3" width="7" height="7" rx="1" stroke="#000" strokeWidth="2"/>
+            <rect x="14" y="3" width="7" height="7" rx="1" stroke="#000" strokeWidth="2"/>
+            <rect x="3" y="14" width="7" height="7" rx="1" stroke="#000" strokeWidth="2"/>
+            <rect x="5" y="5" width="3" height="3" fill="#000"/>
+            <rect x="16" y="5" width="3" height="3" fill="#000"/>
+            <rect x="5" y="16" width="3" height="3" fill="#000"/>
+            <rect x="14" y="14" width="2" height="2" fill="#000"/>
+            <rect x="18" y="14" width="3" height="2" fill="#000"/>
+            <rect x="14" y="18" width="2" height="3" fill="#000"/>
+            <rect x="18" y="18" width="3" height="3" fill="#000"/>
+          </svg>
+        </div>
+        <h2 style={{...hd,fontSize:22}}>تقسيم سريع</h2>
+        <p style={{color:C.sub,fontSize:14,margin:0}}>امسح الباركود أو شارك الرابط للانضمام فوراً</p>
+      </div>
+      <label style={{color:C.sub,fontSize:13,marginBottom:8,display:"block"}}>المبلغ الإجمالي (ر.س)</label>
+      <input value={amount} onChange={e=>setAmount(e.target.value)} placeholder="0" type="number" style={{...inp,fontSize:36,textAlign:"center",fontWeight:800,marginBottom:20}}/>
+      
+      {/* Mode selection */}
+      <label style={{color:C.sub,fontSize:13,marginBottom:10,display:"block"}}>نوع العملية</label>
+      <div style={{display:"flex",gap:10,marginBottom:20}}>
+        <button onClick={()=>setMode("quick")} style={{flex:1,padding:14,borderRadius:14,background:mode==="quick"?C.primaryDim:C.card,border:`1.5px solid ${mode==="quick"?C.primary:C.border}`,cursor:"pointer",textAlign:"center"}}>
+          <span style={{fontSize:24,display:"block",marginBottom:4}}>⚡</span>
+          <span style={{color:mode==="quick"?C.primary:C.text,fontSize:13,fontWeight:700,fontFamily:font}}>دفع سريع</span>
+          <p style={{color:C.muted,fontSize:10,margin:"4px 0 0"}}>دفعة واحدة فورية</p>
+        </button>
+        <button onClick={()=>setMode("scheduled")} style={{flex:1,padding:14,borderRadius:14,background:mode==="scheduled"?C.primaryDim:C.card,border:`1.5px solid ${mode==="scheduled"?C.primary:C.border}`,cursor:"pointer",textAlign:"center"}}>
+          <span style={{fontSize:24,display:"block",marginBottom:4}}>📅</span>
+          <span style={{color:mode==="scheduled"?C.primary:C.text,fontSize:13,fontWeight:700,fontFamily:font}}>مجموعة مستمرة</span>
+          <p style={{color:C.muted,fontSize:10,margin:"4px 0 0"}}>البطاقة فعّالة لتاريخ معيّن</p>
+        </button>
+      </div>
+      {mode==="scheduled"&&<div style={{marginBottom:20}}>
+        <label style={{color:C.sub,fontSize:12,marginBottom:6,display:"block"}}>تاريخ انتهاء المجموعة</label>
+        <input type="date" value={endDate} onChange={e=>setEndDate(e.target.value)} style={{...inp,fontSize:14,direction:"ltr",textAlign:"center"}}/>
+      </div>}
+      <button onClick={()=>{if(total>0)setSt(1)}} disabled={total<=0||(mode==="scheduled"&&!endDate)} style={{...btnP,width:"100%",opacity:total>0&&(mode==="quick"||endDate)?1:0.4,background:C.warn,color:"#000"}}>⚡ ابدأ جلسة التقسيم</button>
+    </div>}
+
+    {(st===1||st===2)&&<div>
+      <div style={{textAlign:"center",marginBottom:24}}>
+        <h2 style={{...hd,fontSize:20}}>جلسة تقسيم — {total} ر.س</h2>
+        <p style={{color:C.sub,fontSize:13}}>شارك الرمز أو الباركود مع اللي معك</p>
+        {mode==="scheduled"&&<p style={{color:C.warn,fontSize:11,marginTop:4}}>📅 البطاقة فعّالة حتى {endDate}</p>}
+      </div>
+      <div style={{display:"flex",gap:12,marginBottom:20}}>
+        <div style={{flex:1,padding:20,borderRadius:16,background:C.card,border:`1px solid ${C.border}`,textAlign:"center"}}>
+          <p style={{color:C.muted,fontSize:11,margin:"0 0 8px"}}>رمز الجلسة</p>
+          <div style={{fontSize:36,fontWeight:800,color:C.warn,letterSpacing:8,fontFamily:"monospace"}}>{code}</div>
+          <p style={{color:C.muted,fontSize:10,margin:"8px 0 0"}}>يدخلونه في التطبيق</p>
+        </div>
+        <div style={{flex:1,padding:20,borderRadius:16,background:C.card,border:`1px solid ${C.border}`,textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+          <div style={{width:80,height:80,borderRadius:12,background:"#fff",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8}}>
+            <svg width="60" height="60" viewBox="0 0 60 60">
+              <rect x="5" y="5" width="18" height="18" rx="2" fill="#000"/>
+              <rect x="37" y="5" width="18" height="18" rx="2" fill="#000"/>
+              <rect x="5" y="37" width="18" height="18" rx="2" fill="#000"/>
+              <rect x="9" y="9" width="10" height="10" rx="1" fill="#fff"/>
+              <rect x="41" y="9" width="10" height="10" rx="1" fill="#fff"/>
+              <rect x="9" y="41" width="10" height="10" rx="1" fill="#fff"/>
+              <rect x="12" y="12" width="4" height="4" fill="#000"/>
+              <rect x="44" y="12" width="4" height="4" fill="#000"/>
+              <rect x="12" y="44" width="4" height="4" fill="#000"/>
+              <rect x="28" y="5" width="4" height="4" fill="#000"/>
+              <rect x="28" y="13" width="4" height="4" fill="#000"/>
+              <rect x="28" y="28" width="4" height="4" fill="#000"/>
+              <rect x="37" y="28" width="4" height="4" fill="#000"/>
+              <rect x="45" y="28" width="4" height="4" fill="#000"/>
+              <rect x="37" y="37" width="4" height="4" fill="#000"/>
+              <rect x="45" y="45" width="4" height="4" fill="#000"/>
+              <rect x="37" y="49" width="4" height="4" fill="#000"/>
+              <rect x="49" y="37" width="4" height="4" fill="#000"/>
+              <rect x="28" y="37" width="4" height="8" fill="#000"/>
+              <rect x="28" y="49" width="4" height="4" fill="#000"/>
+            </svg>
+          </div>
+          <p style={{color:C.muted,fontSize:10,margin:0}}>امسح الباركود للانضمام</p>
+        </div>
+      </div>
+      {/* Share link */}
+      <div style={{padding:14,borderRadius:12,background:C.primaryDim,border:`1px solid ${C.primary}30`,marginBottom:20}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:20}}>🔗</span>
+          <div style={{flex:1}}>
+            <p style={{color:C.primary,fontSize:12,fontWeight:700,margin:0}}>شارك رابط المجموعة</p>
+            <p style={{color:C.sub,fontSize:11,margin:"2px 0 0",direction:"ltr",textAlign:"right"}}>splitpay.sa/join/{code}</p>
+          </div>
+          <button onClick={()=>{setCopied(true);setTimeout(()=>setCopied(false),2000)}} style={{...pill(C.primary),cursor:"pointer",border:"none",padding:"8px 14px"}}>{copied?"✓ تم النسخ":"نسخ الرابط"}</button>
+        </div>
+      </div>
+      <div style={{padding:12,borderRadius:12,background:C.warnDim,border:`1px solid ${C.warn}30`,marginBottom:20,display:"flex",alignItems:"center",gap:10}}>
+        <span style={{fontSize:16}}>📨</span>
+        <p style={{color:C.sub,fontSize:11,margin:0}}>ما عندهم التطبيق؟ أرسل الرابط — يدفعون من المتصفح</p>
+      </div>
+      <p style={{color:C.sub,fontSize:13,marginBottom:10,fontFamily:font}}>المنضمين ({joined.length})</p>
+      {joined.map((m,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",marginBottom:8,borderRadius:14,background:C.card,border:`1px solid ${C.border}`,animation:"fadeIn 0.4s ease"}}>
+        <span style={{fontSize:28}}>{m.avatar}</span>
+        <span style={{color:C.text,fontSize:14,flex:1,fontFamily:font}}>{m.name}</span>
+        <span style={pill(m.status==="host"?C.primary:m.status==="app"?C.accent:C.warn)}>{m.status==="host"?"أنت (المضيف)":m.status==="app"?"عبر التطبيق":"عبر الرابط"}</span>
+        <span style={{color:C.text,fontWeight:700,fontSize:14}}>{pp} ر.س</span>
+      </div>)}
+      {st===1&&<div style={{textAlign:"center",marginTop:16}}>
+        <div style={{...spinAnim(20),margin:"0 auto 8px"}}/>
+        <p style={{color:C.muted,fontSize:12}}>بانتظار انضمام المزيد...</p>
+      </div>}
+      {st===2&&<button onClick={()=>setSt(3)} style={{...btnP,width:"100%",marginTop:16,background:C.warn,color:"#000"}}>⚡ قسّم — {pp} ر.س لكل شخص</button>}
+    </div>}
+
+    {st===3&&<div style={{textAlign:"center",marginTop:40}}>
+      <div style={{...spinAnim(48),margin:"0 auto 24px",borderWidth:4}}/>
+      <h3 style={{color:C.text,fontSize:18}}>جاري خصم الحصص...</h3>
+    </div>}
+
+    {st===4&&<div style={{textAlign:"center",marginTop:20}}>
+      <div style={{fontSize:48,marginBottom:12}}>🎉</div>
+      <h2 style={{...hd,fontSize:24}}>تم التقسيم!</h2>
+      <p style={{color:C.sub,fontSize:14,marginBottom:24}}>{total} ر.س ÷ {joined.length} = {pp} ر.س لكل شخص</p>
+      {joined.map((m,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",marginBottom:8,borderRadius:14,background:C.card,border:`1px solid ${C.border}`}}>
+        <span style={{fontSize:28}}>{m.avatar}</span>
+        <span style={{color:C.text,fontSize:14,flex:1,fontFamily:font}}>{m.name}</span>
+        <span style={pill(i<2?C.primary:C.warn)}>{i<2?"✓ تم الخصم":"⏳ بانتظار الدفع"}</span>
+        <span style={{color:C.text,fontWeight:700}}>{pp} ر.س</span>
+      </div>)}
+      <div style={{padding:16,borderRadius:14,background:C.warnDim,border:`1px solid ${C.warn}30`,marginTop:16,textAlign:"right"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+          <span style={{fontSize:18}}>⏳</span>
+          <span style={{color:C.warn,fontSize:14,fontWeight:700,fontFamily:font}}>محمد لم يدفع بعد</span>
+        </div>
+        <p style={{color:C.sub,fontSize:12,margin:"0 0 10px"}}>دخل عبر الرابط — أرسلنا له تذكير</p>
+        <div style={{display:"flex",gap:8}}>
+          <button style={{...pill(C.warn),border:"none",cursor:"pointer",padding:"6px 14px"}}>🔔 ذكّره</button>
+          <button style={{...pill(C.primary),border:"none",cursor:"pointer",padding:"6px 14px"}}>💰 غطّي عنه</button>
+        </div>
+      </div>
+      <button onClick={()=>nav("home")} style={{...btnP,width:"100%",marginTop:20}}>🏠 الرئيسية</button>
+    </div>}
+  </div>
+}
+
+/* ============ 8. CREATE GROUP ============ */
+function Create({nav}){
+  const[name,setName]=useState("");
+  const[emoji,setEmoji]=useState("🏠");
+  const[phone,setPhone]=useState("");
+  const[members,setMembers]=useState([{name:"علي (أنت)",phone:"053****1143",status:"active",avatar:"👨🏻‍💼"}]);
+  const emojis=["🏠","✈️","🍔","🎮","💼","🎉","🛒","☕"];
+  const avatars=["👩🏻‍💻","👨🏻‍🔧","👩🏻‍🎨","👨🏻","👩🏻"];
+  const add=()=>{if(phone.length>=10){const hasApp=members.length%2===1;setMembers(p=>[...p,{name:phone,phone:phone.slice(0,3)+"****"+phone.slice(-4),status:hasApp?"active":"pending",avatar:avatars[members.length%avatars.length]}]);setPhone("")}};
+  return<div style={{...fullS,padding:24,direction:"rtl",overflowY:"auto",paddingBottom:100}}>
+    <TopBar onBack={()=>nav("home")} nav={nav}/>
+    <h2 style={{...hd,fontSize:22,textAlign:"center",marginTop:8}}>مجموعة جديدة</h2>
+    <label style={{color:C.sub,fontSize:13,marginBottom:8,display:"block",marginTop:20}}>أيقونة</label>
+    <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:20}}>
+      {emojis.map(e=><button key={e} onClick={()=>setEmoji(e)} style={{width:48,height:48,borderRadius:14,fontSize:24,background:emoji===e?C.primaryDim:C.card,border:`1.5px solid ${emoji===e?C.primary:C.border}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{e}</button>)}
+    </div>
+    <label style={{color:C.sub,fontSize:13,marginBottom:8,display:"block"}}>اسم المجموعة</label>
+    <input value={name} onChange={e=>setName(e.target.value)} placeholder="مثال: شقة الرياض" style={{...inp,marginBottom:20}}/>
+    <label style={{color:C.sub,fontSize:13,marginBottom:8,display:"block"}}>أضف أعضاء برقم الجوال</label>
+    <div style={{display:"flex",gap:8,marginBottom:16}}>
+      <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="05xxxxxxxx" maxLength={10} style={{...inp,flex:1}}/>
+      <button onClick={add} disabled={phone.length<10} style={{...btnP,padding:"14px 20px",opacity:phone.length>=10?1:0.4,fontSize:20,lineHeight:1}}>+</button>
+    </div>
+    {members.map((m,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",marginBottom:8,borderRadius:14,background:C.card,border:`1px solid ${C.border}`}}>
+      <span style={{fontSize:28}}>{m.avatar}</span>
+      <div style={{flex:1}}><p style={{color:C.text,fontSize:14,margin:0,fontFamily:font}}>{m.name}</p><p style={{color:C.muted,fontSize:11,margin:0}}>{m.phone}</p></div>
+      <span style={pill(m.status==="active"?C.primary:C.warn)}>{m.status==="active"?"✓ مفعّل":"📨 بانتظار التسجيل"}</span>
+    </div>)}
+    {members.some(m=>m.status==="pending")&&<div style={{padding:14,borderRadius:12,background:C.warnDim,border:`1px solid ${C.warn}30`,marginBottom:20,marginTop:8}}>
+      <p style={{color:C.sub,fontSize:12,margin:0}}>📨 اللي ما عندهم التطبيق بيوصلهم SMS + رابط دفع مؤقت</p>
+    </div>}
+    <button onClick={()=>nav("ratio")} disabled={!name||members.length<2} style={{...btnP,width:"100%",opacity:name&&members.length>=2?1:0.4}}>التالي — نسب التقسيم</button>
+  </div>
+}
+
+/* ============ 9. RATIO ============ */
+function Ratio({nav}){
+  const ms=[{id:1,name:"علي",avatar:"👨🏻‍💼",color:C.primary},{id:2,name:"عضو 2",avatar:"👩🏻‍💻",color:C.accent},{id:3,name:"عضو 3",avatar:"👨🏻‍🔧",color:C.warn}];
+  const[r,setR]=useState({1:33,2:33,3:34});
+  const[payMode,setPayMode]=useState("single");
+  const[endDate,setEndDate]=useState("");
+  const[endTime,setEndTime]=useState("");
+  const t=Object.values(r).reduce((a,b)=>a+b,0);
+  const canProceed=t===100&&(payMode==="single"||(payMode==="recurring"&&endDate));
+  return<div style={{...fullS,padding:24,direction:"rtl",overflowY:"auto",paddingBottom:40}}>
+    <TopBar onBack={()=>nav("create")} nav={nav}/>
+    <h2 style={{...hd,fontSize:22,textAlign:"center",marginTop:8}}>نسب التقسيم</h2>
+    <div style={{width:140,height:140,borderRadius:"50%",margin:"20px auto",background:`conic-gradient(${ms.map((u,i)=>{const s=ms.slice(0,i).reduce((a,m)=>a+(r[m.id]||0),0);return`${u.color} ${s}% ${s+(r[u.id]||0)}%`}).join(",")})`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{width:90,height:90,borderRadius:"50%",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column"}}>
+        <span style={{color:t===100?C.primary:C.danger,fontSize:22,fontWeight:800}}>{t}%</span>
+      </div>
+    </div>
+    {ms.map(u=><div key={u.id} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderRadius:14,background:C.card,border:`1px solid ${C.border}`,marginBottom:10}}>
+      <span style={{fontSize:24}}>{u.avatar}</span>
+      <span style={{color:C.text,fontSize:14,flex:1,fontFamily:font}}>{u.name}</span>
+      <input type="range" min={0} max={100} value={r[u.id]||0} onChange={e=>setR(p=>({...p,[u.id]:parseInt(e.target.value)||0}))} style={{width:70,accentColor:u.color}}/>
+      <span style={{color:u.color,fontWeight:700,fontSize:16,minWidth:40,textAlign:"center"}}>{r[u.id]}%</span>
+    </div>)}
+    <div style={{padding:14,borderRadius:12,background:C.primaryDim,border:`1px solid ${C.primary}30`,margin:"16px 0"}}>
+      <p style={{color:C.sub,fontSize:12,margin:0,textAlign:"center"}}>💡 عملية 300 ر.س → علي {Math.round(300*r[1]/100)} | عضو 2: {Math.round(300*r[2]/100)} | عضو 3: {Math.round(300*r[3]/100)}</p>
+    </div>
+    {/* Payment mode */}
+    <label style={{color:C.sub,fontSize:13,marginBottom:10,display:"block"}}>نوع الدفع</label>
+    <div style={{display:"flex",gap:10,marginBottom:16}}>
+      <button onClick={()=>setPayMode("single")} style={{flex:1,padding:14,borderRadius:14,background:payMode==="single"?C.primaryDim:C.card,border:`1.5px solid ${payMode==="single"?C.primary:C.border}`,cursor:"pointer",textAlign:"center"}}>
+        <span style={{fontSize:22,display:"block",marginBottom:4}}>💳</span>
+        <span style={{color:payMode==="single"?C.primary:C.text,fontSize:13,fontWeight:700,fontFamily:font}}>دفعة واحدة</span>
+        <p style={{color:C.muted,fontSize:10,margin:"4px 0 0"}}>عملية دفع فورية</p>
+      </button>
+      <button onClick={()=>setPayMode("recurring")} style={{flex:1,padding:14,borderRadius:14,background:payMode==="recurring"?C.primaryDim:C.card,border:`1.5px solid ${payMode==="recurring"?C.primary:C.border}`,cursor:"pointer",textAlign:"center"}}>
+        <span style={{fontSize:22,display:"block",marginBottom:4}}>🔄</span>
+        <span style={{color:payMode==="recurring"?C.primary:C.text,fontSize:13,fontWeight:700,fontFamily:font}}>دفعات متعددة</span>
+        <p style={{color:C.muted,fontSize:10,margin:"4px 0 0"}}>البطاقة فعّالة لفترة محددة</p>
+      </button>
+    </div>
+    {payMode==="recurring"&&<div style={{padding:16,borderRadius:14,background:C.card,border:`1px solid ${C.border}`,marginBottom:16}}>
+      <label style={{color:C.sub,fontSize:12,marginBottom:8,display:"block"}}>📅 فعّالة حتى تاريخ</label>
+      <input type="date" value={endDate} onChange={e=>setEndDate(e.target.value)} style={{...inp,fontSize:14,direction:"ltr",textAlign:"center",marginBottom:10}}/>
+      <label style={{color:C.sub,fontSize:12,marginBottom:8,display:"block"}}>🕐 الوقت (اختياري)</label>
+      <input type="time" value={endTime} onChange={e=>setEndTime(e.target.value)} style={{...inp,fontSize:14,direction:"ltr",textAlign:"center"}}/>
+      <p style={{color:C.muted,fontSize:10,margin:"8px 0 0"}}>البطاقة المشتركة تنتهي صلاحيتها تلقائياً في هذا الموعد</p>
+    </div>}
+    <button onClick={()=>nav("shareGroup")} disabled={!canProceed} style={{...btnP,width:"100%",opacity:canProceed?1:0.4}}>إنشاء المجموعة 🔗</button>
+  </div>
+}
+
+/* ============ 10. SHARE GROUP ============ */
+function ShareGroup({nav}){
+  const[copied,setCopied]=useState(false);
+  const groupCode="SP-7291";
+  return<div style={{...fullS,padding:24,direction:"rtl"}}>
+    <TopBar onBack={()=>nav("ratio")} nav={nav}/>
+    <div style={{textAlign:"center",marginTop:20,marginBottom:32}}>
+      <div style={{width:80,height:80,borderRadius:"50%",margin:"0 auto 16px",background:C.primaryDim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:40}}>✅</div>
+      <h2 style={{...hd,fontSize:22}}>تم إنشاء المجموعة!</h2>
+      <p style={{color:C.sub,fontSize:14}}>🏠 شقة الرياض</p>
+    </div>
+    <p style={{color:C.sub,fontSize:14,textAlign:"center",marginBottom:20}}>شارك الرابط مع الأعضاء للانضمام</p>
+    {/* Share link card */}
+    <div style={{padding:20,borderRadius:16,background:C.card,border:`1px solid ${C.border}`,marginBottom:16}}>
+      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+        <div style={{width:48,height:48,borderRadius:12,background:C.primaryDim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}}>🔗</div>
+        <div style={{flex:1}}>
+          <p style={{color:C.text,fontSize:14,margin:0,fontWeight:700,fontFamily:font}}>رابط المجموعة</p>
+          <p style={{color:C.primary,fontSize:12,margin:"4px 0 0",direction:"ltr",textAlign:"right"}}>splitpay.sa/g/{groupCode}</p>
+        </div>
+      </div>
+      <div style={{display:"flex",gap:10}}>
+        <button onClick={()=>{setCopied(true);setTimeout(()=>setCopied(false),2000)}} style={{...btnP,flex:1,fontSize:13}}>{copied?"✓ تم النسخ":"📋 نسخ الرابط"}</button>
+        <button style={{...btnSec,flex:1,fontSize:13}}>📤 مشاركة</button>
+      </div>
+    </div>
+    {/* QR Code */}
+    <div style={{padding:20,borderRadius:16,background:C.card,border:`1px solid ${C.border}`,marginBottom:20,textAlign:"center"}}>
+      <p style={{color:C.sub,fontSize:13,margin:"0 0 12px"}}>أو امسح الباركود</p>
+      <div style={{width:120,height:120,borderRadius:16,background:"#fff",margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <svg width="90" height="90" viewBox="0 0 60 60">
+          <rect x="5" y="5" width="18" height="18" rx="2" fill="#000"/>
+          <rect x="37" y="5" width="18" height="18" rx="2" fill="#000"/>
+          <rect x="5" y="37" width="18" height="18" rx="2" fill="#000"/>
+          <rect x="9" y="9" width="10" height="10" rx="1" fill="#fff"/>
+          <rect x="41" y="9" width="10" height="10" rx="1" fill="#fff"/>
+          <rect x="9" y="41" width="10" height="10" rx="1" fill="#fff"/>
+          <rect x="12" y="12" width="4" height="4" fill="#000"/>
+          <rect x="44" y="12" width="4" height="4" fill="#000"/>
+          <rect x="12" y="44" width="4" height="4" fill="#000"/>
+          <rect x="28" y="5" width="4" height="4" fill="#000"/>
+          <rect x="28" y="13" width="4" height="4" fill="#000"/>
+          <rect x="28" y="28" width="4" height="4" fill="#000"/>
+          <rect x="37" y="28" width="4" height="4" fill="#000"/>
+          <rect x="45" y="28" width="4" height="4" fill="#000"/>
+          <rect x="37" y="37" width="4" height="4" fill="#000"/>
+          <rect x="45" y="45" width="4" height="4" fill="#000"/>
+          <rect x="37" y="49" width="4" height="4" fill="#000"/>
+          <rect x="49" y="37" width="4" height="4" fill="#000"/>
+          <rect x="28" y="37" width="4" height="8" fill="#000"/>
+          <rect x="28" y="49" width="4" height="4" fill="#000"/>
+        </svg>
+      </div>
+    </div>
+    <button onClick={()=>nav("cardReady")} style={{...btnP,width:"100%"}}>التالي — البطاقة المشتركة 💳</button>
+    <button onClick={()=>nav("home")} style={{...btnSec,width:"100%",marginTop:10}}>🏠 الرئيسية</button>
+  </div>
+}
+
+/* ============ 11. CARD READY ============ */
+function CardReady({nav}){
+  const[addedApple,setAddedApple]=useState(false);
+  return<div style={{...fullS,padding:24,direction:"rtl",display:"flex",flexDirection:"column",alignItems:"center"}}>
+    <div style={{width:"100%"}}><TopBar onBack={()=>nav("shareGroup")} nav={nav}/></div>
+    <div style={{textAlign:"center",marginTop:20,marginBottom:24}}>
+      <h2 style={{...hd,fontSize:24}}>بطاقتك المشتركة جاهزة!</h2>
+      <p style={{color:C.sub,fontSize:14}}>🏠 شقة الرياض</p>
+    </div>
+    {/* Card with SplitPay branding */}
+    <div style={{width:"100%",maxWidth:340,height:210,borderRadius:24,padding:24,background:"linear-gradient(135deg,#0a1628,#0f2847,#163d6e)",boxShadow:`0 16px 48px ${C.primary}15, 0 0 0 1px ${C.primary}10`,display:"flex",flexDirection:"column",justifyContent:"space-between",position:"relative",marginBottom:28}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{display:"flex",alignItems:"baseline",gap:2,direction:"ltr"}}>
+          <span style={{fontSize:14,color:"#fff",fontWeight:900,letterSpacing:1}}>SPLIT</span>
+          <span style={{fontSize:11,color:C.primary,fontWeight:800,letterSpacing:1}}>PAY</span>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <span style={{fontSize:11,color:C.sub}}>مدى</span>
+          <div style={{width:30,height:20,borderRadius:4,background:"linear-gradient(90deg,#EB001B,#F79E1B)",opacity:0.8}}/>
+        </div>
+      </div>
+      <div style={{position:"absolute",top:55,right:24,width:40,height:30,borderRadius:6,background:"linear-gradient(135deg,#C9A84C,#E8D48B)"}}/>
+      <div style={{fontSize:22,color:C.text,letterSpacing:4,fontFamily:"monospace",textAlign:"center",direction:"ltr",marginTop:8}}>5234 •••• •••• 7891</div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
+        <div>
+          <div style={{fontSize:9,color:C.muted}}>المجموعة</div>
+          <div style={{fontSize:14,color:C.text,fontFamily:font}}>🏠 شقة الرياض</div>
+        </div>
+        <div style={{textAlign:"left"}}>
+          <div style={{fontSize:9,color:C.muted}}>صالحة حتى</div>
+          <div style={{fontSize:14,color:C.text,fontFamily:"monospace"}}>12/28</div>
+        </div>
+      </div>
+    </div>
+    {/* Apple Pay button */}
+    <button onClick={()=>setAddedApple(true)} style={{width:"100%",maxWidth:340,padding:16,borderRadius:14,border:"none",background:addedApple?"transparent":"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:12,...(addedApple&&{border:`2px solid ${C.primary}`,background:C.primaryDim})}}>
+      {addedApple?<>
+        <span style={{color:C.primary,fontSize:18}}>✓</span>
+        <span style={{color:C.primary,fontSize:15,fontWeight:700,fontFamily:font}}>تمت الإضافة إلى Apple Pay</span>
+      </>:<>
+        <span style={{fontSize:18}}>🍎</span>
+        <span style={{color:"#000",fontSize:15,fontWeight:700}}>إضافة إلى Apple Pay</span>
+      </>}
+    </button>
+    <button style={{...btnSec,width:"100%",maxWidth:340,fontSize:13,marginBottom:24}}>📋 نسخ بيانات البطاقة</button>
+    {/* Members summary */}
+    <div style={{width:"100%",padding:16,borderRadius:16,background:C.card,border:`1px solid ${C.border}`,marginBottom:20}}>
+      <p style={{color:C.sub,fontSize:13,margin:"0 0 12px",fontFamily:font}}>الأعضاء</p>
+      {[{n:"علي",a:"👨🏻‍💼",c:C.primary,p:33,s:"مفعّل"},{n:"05****7823",a:"👩🏻‍💻",c:C.accent,p:33,s:"مفعّل"},{n:"05****4561",a:"👨🏻‍🔧",c:C.warn,p:34,s:"بانتظار التسجيل"}].map((u,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:i<2?`1px solid ${C.border}`:"none"}}>
+        <span style={{fontSize:22}}>{u.a}</span>
+        <span style={{color:C.text,fontSize:14,flex:1,fontFamily:font}}>{u.n}</span>
+        {u.s!=="مفعّل"&&<span style={pill(C.warn)}>{u.s}</span>}
+        <span style={pill(u.c)}>{u.p}%</span>
+      </div>)}
+    </div>
+    <button onClick={()=>nav("payment")} style={{...btnP,width:"100%"}}>محاكاة عملية دفع 🛒</button>
+    <button onClick={()=>nav("home")} style={{...btnSec,width:"100%",marginTop:10}}>🏠 الرئيسية</button>
+  </div>
+}
+
+/* ============ 12. PAYMENT ============ */
+function Payment({nav}){
+  const[st,setSt]=useState(0);
+  useEffect(()=>{
+    if(st===1)setTimeout(()=>setSt(2),1500);
+    if(st===2)setTimeout(()=>setSt(3),3000);
+  },[st]);
+  const splits=[{name:"علي",avatar:"👨🏻‍💼",amount:149,color:C.primary,ok:true},{name:"سارة",avatar:"👩🏻‍💻",amount:149,color:C.accent,ok:true},{name:"خالد",avatar:"👨🏻‍🔧",amount:152,color:C.warn,ok:false}];
+  return<div style={{...fullS,padding:24,direction:"rtl"}}>
+    <TopBar onBack={()=>nav("home")} nav={nav}/>
+    {st===0&&<div style={{textAlign:"center",marginTop:30}}>
+      <div style={{fontSize:64,marginBottom:16}}>🍕</div>
+      <h2 style={{...hd,fontSize:22}}>مطعم بيتزا إيطاليانو</h2>
+      <p style={{color:C.sub,fontSize:14}}>نقطة البيع — الرياض</p>
+      <div style={{fontSize:48,fontWeight:800,color:C.text,marginTop:24,fontFamily:font}}>٤٥٠ ر.س</div>
+      <p style={{color:C.muted,fontSize:13,marginTop:8}}>بطاقة: 🏠 شقة الرياض</p>
+      <button onClick={()=>setSt(1)} style={{...btnP,marginTop:32,width:"100%"}}>ادفع الآن 💳</button>
+    </div>}
+    {st===1&&<div style={{textAlign:"center",marginTop:80}}>
+      <div style={{...spinAnim(48),margin:"0 auto 24px",borderWidth:4}}/>
+      <h3 style={{color:C.text,fontSize:18}}>جاري معالجة الدفع...</h3>
+    </div>}
+    {st===2&&<div style={{textAlign:"center",marginTop:20}}>
+      <div style={{width:64,height:64,borderRadius:"50%",margin:"0 auto 16px",background:C.primaryDim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:32}}>✅</div>
+      <h3 style={{color:C.primary,fontSize:18,marginBottom:24}}>تم الدفع — جاري التقسيم...</h3>
+      {splits.map((s,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",marginBottom:8,borderRadius:14,background:C.card,border:`1px solid ${C.border}`,animation:`fadeIn 0.4s ease ${i*0.3}s both`}}>
+        <span style={{fontSize:28}}>{s.avatar}</span>
+        <span style={{color:C.text,fontSize:14,flex:1,fontFamily:font}}>{s.name}</span>
+        <div style={{...spinAnim(18),borderWidth:2}}/>
+        <span style={{color:s.color,fontWeight:700,fontSize:15}}>{s.amount} ر.س</span>
+      </div>)}
+    </div>}
+    {st===3&&<div style={{textAlign:"center",marginTop:10}}>
+      <div style={{fontSize:48,marginBottom:12}}>🎉</div>
+      <h2 style={{...hd,fontSize:24}}>تم التقسيم!</h2>
+      <p style={{color:C.sub,fontSize:14,marginBottom:24}}>٤٥٠ ر.س — مطعم بيتزا إيطاليانو</p>
+      <div style={{padding:20,borderRadius:20,background:C.card,border:`1px solid ${C.border}`,marginBottom:16,textAlign:"right"}}>
+        {splits.map((s,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:i<2?`1px solid ${C.border}`:"none"}}>
+          <span style={{fontSize:24}}>{s.avatar}</span>
+          <span style={{color:C.text,fontSize:14,flex:1,fontFamily:font}}>{s.name}</span>
+          <span style={pill(s.ok?C.primary:C.danger)}>{s.ok?"✓ تم الخصم":"✗ رصيد غير كافي"}</span>
+          <span style={{color:s.color,fontWeight:700}}>{s.amount} ر.س</span>
+        </div>)}
+      </div>
+      <div style={{padding:16,borderRadius:14,background:C.dangerDim,border:`1px solid ${C.danger}30`,textAlign:"right",marginBottom:16}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+          <span style={{fontSize:18}}>⚠️</span>
+          <span style={{color:C.danger,fontSize:14,fontWeight:700,fontFamily:font}}>خالد — رصيد غير كافي</span>
+        </div>
+        <p style={{color:C.sub,fontSize:12,margin:"0 0 12px"}}>حصته ١٥٢ ر.س معلّقة. الباقي دفعوا بنجاح.</p>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <button style={{...pill(C.danger),border:"none",cursor:"pointer",padding:"8px 14px"}}>🔔 ذكّره</button>
+          <button style={{...pill(C.warn),border:"none",cursor:"pointer",padding:"8px 14px"}}>🔄 إعادة المحاولة</button>
+          <button style={{...pill(C.primary),border:"none",cursor:"pointer",padding:"8px 14px"}}>💰 غطّي عنه</button>
+        </div>
+      </div>
+      <div style={{padding:14,borderRadius:12,background:C.primaryDim,border:`1px solid ${C.primary}20`}}>
+        <p style={{color:C.primary,fontSize:13,margin:0,fontWeight:600}}>💡 علي وسارة دفعوا لحظياً — لا أحد مدين لأحد</p>
+      </div>
+      <button onClick={()=>nav("home")} style={{...btnP,width:"100%",marginTop:20}}>🏠 الرئيسية</button>
+    </div>}
+  </div>
+}
+
+/* ============ APP ROUTER ============ */
+function App(){
+  const[screen,setScreen]=useState("splash");
+  const nav=(to)=>setScreen(to);
+  return<div style={{width:"100%",maxWidth:430,margin:"0 auto",minHeight:"100vh",background:C.bg,fontFamily:font,position:"relative",overflow:"hidden"}}>
+    <style>{`@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}@keyframes spin{to{transform:rotate(360deg)}}*{box-sizing:border-box;-webkit-font-smoothing:antialiased}input:focus{outline:none;border-color:${C.primary}!important}::-webkit-scrollbar{width:0}`}</style>
+    {screen==="splash"&&<Splash go={()=>nav("phone")}/>}
+    {screen==="phone"&&<PhoneOtp go={()=>nav("nafath")}/>}
+    {screen==="nafath"&&<Nafath go={()=>nav("terms")}/>}
+    {screen==="terms"&&<Terms go={()=>nav("cardlink")}/>}
+    {screen==="cardlink"&&<CardLink go={()=>nav("home")}/>}
+    {screen==="home"&&<Home nav={nav}/>}
+    {screen==="quick"&&<QuickSplit nav={nav}/>}
+    {screen==="create"&&<Create nav={nav}/>}
+    {screen==="ratio"&&<Ratio nav={nav}/>}
+    {screen==="shareGroup"&&<ShareGroup nav={nav}/>}
+    {screen==="cardReady"&&<CardReady nav={nav}/>}
+    {screen==="card"&&<CardReady nav={nav}/>}
+    {screen==="payment"&&<Payment nav={nav}/>}
+  </div>
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
