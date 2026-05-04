@@ -63,20 +63,43 @@ function TopBar({onBack,onHome,nav}){return<div style={{display:"flex",justifyCo
 </div>}
 
 /* ============ 1. SPLASH ============ */
-function Splash({go}){
+function Splash({go,login}){
   const[s,setS]=useState(false);
+  const[logging,setLogging]=useState(false);
+  const[verified,setVerified]=useState(false);
   useEffect(()=>{setTimeout(()=>setS(true),100)},[]);
+  const doLogin=()=>{setLogging(true);setTimeout(()=>setVerified(true),1800);setTimeout(login,3000)};
   return<div style={{...fullS,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:`radial-gradient(ellipse at 50% 30%,${C.card} 0%,${C.bg} 70%)`,position:"relative"}}>
     <BgRings/>
+    {!logging?<>
     <div style={{opacity:s?1:0,transform:s?"scale(1)":"scale(0.8)",transition:"all 0.8s cubic-bezier(0.34,1.56,0.64,1)",textAlign:"center",position:"relative",zIndex:1}}>
       <SplitLogo size={48}/>
       <p style={{color:C.sub,fontSize:16,marginTop:12,fontFamily:font}}>تسوية دفع جماعي مباشرة</p>
     </div>
     <div style={{position:"absolute",bottom:40,width:"calc(100% - 48px)",opacity:s?1:0,transition:"opacity 0.6s ease 0.5s",display:"flex",flexDirection:"column",alignItems:"center",gap:12,zIndex:1}}>
       <button onClick={go} style={{...btnP,width:"100%"}}>ابدأ الآن</button>
-      <p style={{color:C.sub,fontSize:13,margin:0,fontFamily:font}}>لديك حساب؟ <span style={{color:C.primary,cursor:"pointer",fontWeight:700}}>سجل الدخول</span></p>
+      <button onClick={doLogin} style={{...btnSec,width:"100%",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+        <span style={{fontSize:18}}>👤</span> لديك حساب؟ سجل الدخول
+      </button>
       <p style={{color:C.muted,fontSize:10,margin:"4px 0 0",textAlign:"center",fontFamily:font}}>نسخة تجريبية — لا يتم تحويل أموال حقيقية</p>
     </div>
+    </>:
+    <div style={{textAlign:"center",position:"relative",zIndex:1,animation:"fadeIn 0.4s ease"}}>
+      {!verified?<>
+        <div style={{width:100,height:100,borderRadius:"50%",margin:"0 auto 24px",border:`3px solid ${C.primary}`,display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>
+          <span style={{fontSize:44}}>👤</span>
+          <div style={{position:"absolute",inset:-3,borderRadius:"50%",border:`3px solid transparent`,borderTopColor:C.primary,animation:"spin 1.2s linear infinite"}}/>
+        </div>
+        <h3 style={{color:C.text,fontSize:18,fontFamily:font}}>جاري التحقق من الهوية...</h3>
+        <p style={{color:C.sub,fontSize:13}}>Face ID / بصمة الوجه</p>
+      </>:<>
+        <div style={{width:100,height:100,borderRadius:"50%",margin:"0 auto 24px",background:C.primaryDim,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <span style={{fontSize:44}}>✅</span>
+        </div>
+        <h3 style={{color:C.primary,fontSize:18,fontFamily:font}}>أهلاً، علي القرني</h3>
+        <p style={{color:C.sub,fontSize:13}}>جاري تحميل حسابك...</p>
+      </>}
+    </div>}
   </div>
 }
 
@@ -446,9 +469,17 @@ function QuickSplit({nav}){
           <button onClick={()=>{setCopied(true);setTimeout(()=>setCopied(false),2000)}} style={{...pill(C.primary),cursor:"pointer",border:"none",padding:"8px 14px"}}>{copied?"✓ تم النسخ":"نسخ الرابط"}</button>
         </div>
       </div>
-      <div style={{padding:12,borderRadius:12,background:C.warnDim,border:`1px solid ${C.warn}30`,marginBottom:20,display:"flex",alignItems:"center",gap:10}}>
-        <span style={{fontSize:16}}>📨</span>
-        <p style={{color:C.sub,fontSize:11,margin:0}}>ما عندهم التطبيق؟ أرسل الرابط — يدفعون من المتصفح</p>
+      <div style={{padding:12,borderRadius:12,background:C.warnDim,border:`1px solid ${C.warn}30`,marginBottom:20}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+          <span style={{fontSize:16}}>📨</span>
+          <p style={{color:C.warn,fontSize:12,fontWeight:700,margin:0}}>ما عندهم التطبيق؟</p>
+        </div>
+        <p style={{color:C.sub,fontSize:11,margin:"0 0 8px",lineHeight:1.6}}>أرسل الرابط عبر واتساب أو SMS — يفتحونه بالمتصفح، يدخلون بيانات بطاقتهم، ويدفعون حصتهم مباشرة. المبلغ يروح لحساب التسوية ويُخصم من حصتهم تلقائياً.</p>
+        <div style={{display:"flex",gap:8}}>
+          <button style={{...pill(C.warn),cursor:"pointer",border:"none",padding:"6px 12px"}}>📤 واتساب</button>
+          <button style={{...pill(C.primary),cursor:"pointer",border:"none",padding:"6px 12px"}}>💬 SMS</button>
+          <button style={{...pill(C.accent),cursor:"pointer",border:"none",padding:"6px 12px"}}>📋 نسخ الرابط</button>
+        </div>
       </div>
       <p style={{color:C.sub,fontSize:13,marginBottom:10,fontFamily:font}}>المنضمين ({joined.length})</p>
       {joined.map((m,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",marginBottom:8,borderRadius:14,background:C.card,border:`1px solid ${C.border}`,animation:"fadeIn 0.4s ease"}}>
@@ -524,7 +555,8 @@ function Create({nav}){
       <span style={pill(m.status==="active"?C.primary:C.warn)}>{m.status==="active"?"✓ مفعّل":"📨 بانتظار التسجيل"}</span>
     </div>)}
     {members.some(m=>m.status==="pending")&&<div style={{padding:14,borderRadius:12,background:C.warnDim,border:`1px solid ${C.warn}30`,marginBottom:20,marginTop:8}}>
-      <p style={{color:C.sub,fontSize:12,margin:0}}>📨 اللي ما عندهم التطبيق بيوصلهم SMS + رابط دفع مؤقت</p>
+      <p style={{color:C.warn,fontSize:12,fontWeight:700,margin:"0 0 4px"}}>📨 أعضاء بدون التطبيق</p>
+      <p style={{color:C.sub,fontSize:11,margin:0,lineHeight:1.6}}>بيوصلهم رابط دفع عبر SMS — يفتحونه بالمتصفح ويدفعون حصتهم مباشرة ببطاقتهم البنكية بدون تحميل التطبيق</p>
     </div>}
     <button onClick={()=>nav("ratio")} disabled={!name||members.length<2} style={{...btnP,width:"100%",opacity:name&&members.length>=2?1:0.4}}>التالي — نسب التقسيم</button>
   </div>
@@ -538,6 +570,16 @@ function Ratio({nav}){
   const[endDate,setEndDate]=useState("");
   const[endTime,setEndTime]=useState("");
   const t=Object.values(r).reduce((a,b)=>a+b,0);
+  const adjustRatio=(id,val)=>{
+    val=Math.max(0,Math.min(100,parseInt(val)||0));
+    const others=ms.filter(m=>m.id!==id);
+    const oldSum=others.reduce((s,m)=>s+(r[m.id]||0),0);
+    const rem=100-val;
+    const nr={[id]:val};
+    if(oldSum===0){others.forEach((m,i)=>{nr[m.id]=i===0?rem:0})}
+    else{let d=0;others.forEach((m,i)=>{if(i===others.length-1){nr[m.id]=Math.max(0,rem-d)}else{const sh=Math.round((r[m.id]/oldSum)*rem);nr[m.id]=sh;d+=sh}})}
+    setR(nr);
+  };
   const canProceed=t===100&&(payMode==="single"||(payMode==="recurring"&&endDate));
   return<div style={{...fullS,padding:24,direction:"rtl",overflowY:"auto",paddingBottom:40}}>
     <TopBar onBack={()=>nav("create")} nav={nav}/>
@@ -550,7 +592,7 @@ function Ratio({nav}){
     {ms.map(u=><div key={u.id} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderRadius:14,background:C.card,border:`1px solid ${C.border}`,marginBottom:10}}>
       <span style={{fontSize:24}}>{u.avatar}</span>
       <span style={{color:C.text,fontSize:14,flex:1,fontFamily:font}}>{u.name}</span>
-      <input type="range" min={0} max={100} value={r[u.id]||0} onChange={e=>setR(p=>({...p,[u.id]:parseInt(e.target.value)||0}))} style={{width:70,accentColor:u.color}}/>
+      <input type="range" min={0} max={100} value={r[u.id]||0} onChange={e=>adjustRatio(u.id,e.target.value)} style={{width:70,accentColor:u.color}}/>
       <span style={{color:u.color,fontWeight:700,fontSize:16,minWidth:40,textAlign:"center"}}>{r[u.id]}%</span>
     </div>)}
     <div style={{padding:14,borderRadius:12,background:C.primaryDim,border:`1px solid ${C.primary}30`,margin:"16px 0"}}>
@@ -770,7 +812,7 @@ function App(){
   const nav=(to)=>setScreen(to);
   return<div style={{width:"100%",maxWidth:430,margin:"0 auto",minHeight:"100vh",background:C.bg,fontFamily:font,position:"relative",overflow:"hidden"}}>
     <style>{`@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}@keyframes spin{to{transform:rotate(360deg)}}*{box-sizing:border-box;-webkit-font-smoothing:antialiased}input:focus{outline:none;border-color:${C.primary}!important}::-webkit-scrollbar{width:0}`}</style>
-    {screen==="splash"&&<Splash go={()=>nav("phone")}/>}
+    {screen==="splash"&&<Splash go={()=>nav("phone")} login={()=>nav("home")}/>}
     {screen==="phone"&&<PhoneOtp go={()=>nav("nafath")}/>}
     {screen==="nafath"&&<Nafath go={()=>nav("terms")}/>}
     {screen==="terms"&&<Terms go={()=>nav("cardlink")}/>}
